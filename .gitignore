@@ -1,0 +1,11 @@
+*
+!.gitignore
+!.clang-format
+!Makefile
+
+!scripts/
+!*.sh
+
+!src/
+!*.cpp
+!*.hpp
