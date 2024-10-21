@@ -4,7 +4,7 @@
 
 namespace inst {
 
-std::ostream& operator<<(std::ostream& stream, InstOp& op) {
+std::ostream& operator<<(std::ostream& stream, Op& op) {
     stream << op.as_i64;
     return stream;
 }
@@ -66,51 +66,51 @@ std::ostream& operator<<(std::ostream& stream, Inst& inst) {
     return stream;
 }
 
-Inst inst_halt() {
+Inst halt() {
     return (Inst){.type = HALT, .op = {}};
 }
 
-Inst inst_label(const char* label) {
+Inst label(const char* label) {
     return (Inst){.type = LABEL, .op = {.as_string = label}};
 }
 
-Inst inst_jump(const char* label) {
+Inst jump(const char* label) {
     return (Inst){.type = JUMP, .op = {.as_string = label}};
 }
 
-Inst inst_jz(const char* label) {
+Inst jz(const char* label) {
     return (Inst){.type = JZ, .op = {.as_string = label}};
 }
 
-Inst inst_ret() {
+Inst ret() {
     return (Inst){.type = RET, .op = {}};
 }
 
-Inst inst_dup(usize offset) {
+Inst dup(usize offset) {
     return (Inst){.type = DUP, .op = {.as_usize = offset}};
 }
 
-Inst inst_swap(usize offset) {
+Inst swap(usize offset) {
     return (Inst){.type = SWAP, .op = {.as_usize = offset}};
 }
 
-Inst inst_drop(usize offset) {
+Inst drop(usize offset) {
     return (Inst){.type = DROP, .op = {.as_usize = offset}};
 }
 
-Inst inst_push_integer(i64 integer) {
+Inst push_integer(i64 integer) {
     return (Inst){.type = PUSH_INT, .op = {.as_i64 = integer}};
 }
 
-Inst inst_push_label(const char* label) {
+Inst push_label(const char* label) {
     return (Inst){.type = PUSH_LABEL, .op = {.as_string = label}};
 }
 
-Inst inst_ge() {
+Inst ge() {
     return (Inst){.type = GE, .op = {}};
 }
 
-Inst inst_add() {
+Inst add() {
     return (Inst){.type = ADD, .op = {}};
 }
 

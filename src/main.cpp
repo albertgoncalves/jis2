@@ -39,7 +39,7 @@ int main(int argc, const char** argv) {
     std::vector<inst::Inst>  insts = parse::parse(tokens);
 
     interpret::resolve_labels(insts);
-    std::vector<inst::InstOp> stack = interpret::interpret(insts);
+    std::vector<inst::Op> stack = interpret::interpret(insts);
 
     std::cout << insts << std::endl << stack << std::endl;
     return 0;

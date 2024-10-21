@@ -57,8 +57,8 @@ void resolve_labels(std::vector<inst::Inst>& insts) {
     }
 }
 
-std::vector<inst::InstOp> interpret(const std::vector<inst::Inst>& insts) {
-    std::vector<inst::InstOp> stack;
+std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
+    std::vector<inst::Op> stack;
 
     usize pc = 0;
     for (;;) {
@@ -103,8 +103,8 @@ std::vector<inst::InstOp> interpret(const std::vector<inst::Inst>& insts) {
 
             assert(i != j);
 
-            const inst::InstOp a = stack[i];
-            const inst::InstOp b = stack[j];
+            const inst::Op a = stack[i];
+            const inst::Op b = stack[j];
 
             stack[i] = b;
             stack[j] = a;

@@ -8,7 +8,7 @@
 
 namespace inst {
 
-enum InstType {
+enum Type {
     HALT = 0,
 
     LABEL,
@@ -30,7 +30,7 @@ enum InstType {
     ADD,
 };
 
-union InstOp {
+union Op {
     usize       as_usize;
     i64         as_i64;
     bool        as_bool;
@@ -38,28 +38,28 @@ union InstOp {
     void*       as_pointer;
 };
 
-STATIC_ASSERT(sizeof(void*) == sizeof(InstOp));
+STATIC_ASSERT(sizeof(void*) == sizeof(Op));
 
 struct Inst {
-    InstType type;
-    InstOp   op;
+    Type type;
+    Op   op;
 };
 
-std::ostream& operator<<(std::ostream&, InstOp&);
+std::ostream& operator<<(std::ostream&, Op&);
 std::ostream& operator<<(std::ostream&, Inst&);
 
-Inst inst_halt();
-Inst inst_label(const char*);
-Inst inst_jump(const char*);
-Inst inst_jz(const char*);
-Inst inst_ret();
-Inst inst_dup(usize);
-Inst inst_swap(usize);
-Inst inst_drop(usize);
-Inst inst_push_integer(i64);
-Inst inst_push_label(const char*);
-Inst inst_ge();
-Inst inst_add();
+Inst halt();
+Inst label(const char*);
+Inst jump(const char*);
+Inst jz(const char*);
+Inst ret();
+Inst dup(usize);
+Inst swap(usize);
+Inst drop(usize);
+Inst push_integer(i64);
+Inst push_label(const char*);
+Inst ge();
+Inst add();
 
 } // namespace inst
 

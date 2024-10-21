@@ -6,7 +6,8 @@
 namespace parse {
 
 std::vector<std::string> tokenize(const std::string_view&);
-std::vector<inst::Inst>  parse(std::vector<std::string>&);
+
+std::vector<inst::Inst> parse(std::vector<std::string>&);
 
 } // namespace parse
 

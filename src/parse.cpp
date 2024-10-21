@@ -33,23 +33,23 @@ std::vector<inst::Inst> parse(std::vector<std::string>& tokens) {
     const usize n = tokens.size();
     for (usize i = 0; i < n; ++i) {
         if (tokens[i] == std::string_view("halt")) {
-            insts.push_back(inst::inst_halt());
+            insts.push_back(inst::halt());
             continue;
         }
         if (tokens[i] == std::string_view("ret")) {
-            insts.push_back(inst::inst_ret());
+            insts.push_back(inst::ret());
             continue;
         }
         if (tokens[i] == std::string_view("ge")) {
-            insts.push_back(inst::inst_ge());
+            insts.push_back(inst::ge());
             continue;
         }
         if (tokens[i] == std::string_view("add")) {
-            insts.push_back(inst::inst_add());
+            insts.push_back(inst::add());
             continue;
         }
         if (tokens[i][tokens[i].size() - 1] == ':') {
-            insts.push_back(inst::inst_label(tokens[i].c_str()));
+            insts.push_back(inst::label(tokens[i].c_str()));
             continue;
         }
 
@@ -57,30 +57,30 @@ std::vector<inst::Inst> parse(std::vector<std::string>& tokens) {
         assert(j < n);
 
         if (tokens[i] == std::string_view("jump")) {
-            insts.push_back(inst::inst_jump(tokens[j].c_str()));
+            insts.push_back(inst::jump(tokens[j].c_str()));
             goto next;
         }
         if (tokens[i] == std::string_view("jz")) {
-            insts.push_back(inst::inst_jz(tokens[j].c_str()));
+            insts.push_back(inst::jz(tokens[j].c_str()));
             goto next;
         }
         if (tokens[i] == std::string_view("dup")) {
-            insts.push_back(inst::inst_dup(stoull(tokens[j])));
+            insts.push_back(inst::dup(stoull(tokens[j])));
             goto next;
         }
         if (tokens[i] == std::string_view("swap")) {
-            insts.push_back(inst::inst_swap(stoull(tokens[j])));
+            insts.push_back(inst::swap(stoull(tokens[j])));
             goto next;
         }
         if (tokens[i] == std::string_view("drop")) {
-            insts.push_back(inst::inst_drop(stoull(tokens[j])));
+            insts.push_back(inst::drop(stoull(tokens[j])));
             goto next;
         }
         if (tokens[i] == std::string_view("push")) {
             try {
-                insts.push_back(inst::inst_push_integer(stoll(tokens[j])));
+                insts.push_back(inst::push_integer(stoll(tokens[j])));
             } catch (const std::invalid_argument& _) {
-                insts.push_back(inst::inst_push_label(tokens[j].c_str()));
+                insts.push_back(inst::push_label(tokens[j].c_str()));
             }
             goto next;
         }
