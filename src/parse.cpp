@@ -58,42 +58,36 @@ std::vector<inst::Inst> parse(std::vector<std::string>& tokens) {
 
         if (tokens[i] == std::string_view("jump")) {
             insts.push_back(inst::inst_jump(tokens[j].c_str()));
-            i = j;
-            continue;
+            goto next;
         }
         if (tokens[i] == std::string_view("jz")) {
             insts.push_back(inst::inst_jz(tokens[j].c_str()));
-            i = j;
-            continue;
+            goto next;
         }
         if (tokens[i] == std::string_view("dup")) {
             insts.push_back(inst::inst_dup(stoull(tokens[j])));
-            i = j;
-            continue;
+            goto next;
         }
         if (tokens[i] == std::string_view("swap")) {
             insts.push_back(inst::inst_swap(stoull(tokens[j])));
-            i = j;
-            continue;
+            goto next;
         }
         if (tokens[i] == std::string_view("drop")) {
             insts.push_back(inst::inst_drop(stoull(tokens[j])));
-            i = j;
-            continue;
+            goto next;
         }
         if (tokens[i] == std::string_view("push")) {
             try {
                 insts.push_back(inst::inst_push_integer(stoll(tokens[j])));
-                i = j;
-                continue;
             } catch (const std::invalid_argument& _) {
                 insts.push_back(inst::inst_push_label(tokens[j].c_str()));
-                i = j;
-                continue;
             }
+            goto next;
         }
 
         assert(0);
+    next:
+        i = j;
     }
 
     return insts;
