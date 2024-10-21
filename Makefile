@@ -22,6 +22,11 @@ FLAGS = \
 	-Wno-covered-switch-default \
 	-Wno-padded \
 	-Wno-unsafe-buffer-usage
+MODULES = \
+	inst \
+	interpret \
+	parse
+OBJECTS = $(foreach x,$(MODULES),build/$(x).o)
 
 .PHONY: all
 all: bin/main
@@ -29,12 +34,18 @@ all: bin/main
 .PHONY: clean
 clean:
 	rm -rf bin/
+	rm -rf build/
 
 .PHONY: run
 run: all
 	./scripts/run.sh ex/sum_1_to_n.j2
 
-bin/main: src/main.cpp
+bin/main: $(OBJECTS) src/prelude.hpp src/main.cpp
 	mkdir -p bin/
-	clang-format -i -verbose src/main.cpp
-	$(CC) $(FLAGS) -o bin/main src/main.cpp
+	clang-format -i src/prelude.hpp src/main.cpp
+	$(CC) $(FLAGS) -o bin/main $(OBJECTS) src/main.cpp
+
+$(OBJECTS): build/%.o: src/prelude.hpp src/%.hpp src/%.cpp
+	mkdir -p build/
+	clang-format -i src/prelude.hpp $^
+	$(CC) $(FLAGS) -c -o $@ $(word 3,$^)
