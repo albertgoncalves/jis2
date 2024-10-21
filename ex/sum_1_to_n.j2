@@ -1,0 +1,38 @@
+; int sum_1_to_n(int n) {
+;     int x = 0;
+;     while (n >= 0) {
+;         x += n;
+;         n -= 1;
+;     }
+;     return x;
+; }
+
+            push    .return         ; .return
+            push    100             ; .return, 100
+            jump    sum_1_to_n      ; .return, 100
+        .return:
+            halt                    ; sum_1_to_n(100)
+
+    sum_1_to_n:
+            push    0               ; .return, n, x
+
+        .while_start:
+            dup     1               ; .return, n, x, n
+            push    0               ; .return, n, x, n, 0
+            ge                      ; .return, n, x, n>=0
+            jz      .while_end      ; .return, n, x
+
+            dup     1               ; .return, n, x, n
+            add                     ; .return, n, x+n
+            swap    1               ; .return, x+n, n
+            push    -1              ; .return, x+n, n, -1
+            add                     ; .return, x+n, n-1
+            swap    1               ; .return, n-1, x+n
+
+            jump    .while_start
+        .while_end:
+
+            swap    1               ; .return, x+n, n-1
+            drop    1               ; .return, x+n
+            swap    1               ; x+n, .return
+            ret

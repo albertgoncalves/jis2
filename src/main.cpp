@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cstdint>
+#include <fstream>
 #include <iostream>
 #include <string_view>
 #include <unordered_map>
@@ -77,6 +78,63 @@ static T pop(std::vector<T>& vec) {
     return t;
 }
 
+static std::ostream& operator<<(std::ostream& stream, Inst& inst) {
+    switch (inst.type) {
+    case INST_HALT: {
+        stream << "halt";
+        break;
+    }
+    case INST_LABEL: {
+        stream << inst.op.as_string;
+        break;
+    }
+    case INST_JUMP: {
+        stream << "jump " << inst.op.as_usize;
+        break;
+    }
+    case INST_JZ: {
+        stream << "jz " << inst.op.as_usize;
+        break;
+    }
+    case INST_RET: {
+        stream << "ret";
+        break;
+    }
+    case INST_DUP: {
+        stream << "dup " << inst.op.as_usize;
+        break;
+    }
+    case INST_SWAP: {
+        stream << "swap " << inst.op.as_usize;
+        break;
+    }
+    case INST_DROP: {
+        stream << "drop " << inst.op.as_usize;
+        break;
+    }
+    case INST_PUSH_INT: {
+        stream << "push " << inst.op.as_i64;
+        break;
+    }
+    case INST_PUSH_LABEL: {
+        stream << "push " << inst.op.as_usize;
+        break;
+    }
+    case INST_GE: {
+        stream << "ge";
+        break;
+    }
+    case INST_ADD: {
+        stream << "add";
+        break;
+    }
+    default: {
+        assert(0);
+    }
+    }
+    return stream;
+}
+
 static Inst inst_halt() {
     return (Inst){.type = INST_HALT, .op = {}};
 }
@@ -125,21 +183,26 @@ static Inst inst_add() {
     return (Inst){.type = INST_ADD, .op = {}};
 }
 
-static void resolve_labels(Inst* insts, usize insts_len) {
+static void resolve_labels(std::vector<Inst>& insts) {
     std::unordered_map<std::string_view, usize> labels;
 
-    for (usize i = 0; i < insts_len; ++i) {
+    const usize n = insts.size();
+    for (usize i = 0; i < n; ++i) {
         if (insts[i].type != INST_LABEL) {
             continue;
         }
-        labels[insts[i].op.as_string] = i + 1;
+        std::string_view label = std::string_view(insts[i].op.as_string);
+        assert(label[label.size() - 1] == ':');
+        labels[label.substr(0, label.size() - 1)] = i + 1;
     }
-    for (usize i = 0; i < insts_len; ++i) {
+    for (usize i = 0; i < n; ++i) {
         switch (insts[i].type) {
         case INST_JUMP:
         case INST_JZ:
         case INST_PUSH_LABEL: {
-            insts[i].op.as_usize = labels[insts[i].op.as_string];
+            auto key_value = labels.find(insts[i].op.as_string);
+            assert(key_value != nullptr);
+            insts[i].op.as_usize = key_value->second;
             break;
         }
 
@@ -162,14 +225,16 @@ static void resolve_labels(Inst* insts, usize insts_len) {
     }
 }
 
-static void interpret(Inst* insts, std::vector<InstOp>& stack) {
+static std::vector<InstOp> interpret(const std::vector<Inst>& insts) {
+    std::vector<InstOp> stack;
+
     usize pc = 0;
     for (;;) {
         const Inst inst = insts[pc];
 
         switch (inst.type) {
         case INST_HALT: {
-            return;
+            return stack;
         }
         case INST_PUSH_INT:
         case INST_PUSH_LABEL: {
@@ -248,81 +313,119 @@ static void interpret(Inst* insts, std::vector<InstOp>& stack) {
     }
 }
 
-/*
-    int sum_1_to_n(int n) {
-        int x = 0;
-        while (n >= 0) {
-            x += n;
-            n -= 1;
+static std::string string_from_path(const char* path) {
+    std::ifstream file(path);
+    assert(file);
+    const std::string buffer((std::istreambuf_iterator<char>(file)),
+                             std::istreambuf_iterator<char>());
+    return buffer;
+}
+
+static std::vector<std::string> tokenize(const std::string_view& source) {
+    std::vector<std::string> tokens;
+
+    const usize n = source.size();
+    for (usize i = 0;;) {
+        i = source.find_first_not_of(" \t\r\n", i);
+        if (n <= i) {
+            break;
         }
-        return x;
+        if (source[i] == ';') {
+            i = source.find_first_of('\n', i);
+            continue;
+        }
+        usize j = source.find_first_of(" \t\r\n;", i);
+        assert(j <= n);
+        assert(i != j);
+        tokens.push_back(std::string(source.substr(i, j - i)));
+        i = j;
     }
-*/
 
-/*
-            push    .return         ; .return                   0
-            push    100             ; .return, 100              1
-            jump    sum_1_to_n      ; .return, 100              2
-        .return
-            halt                    ; sum_1_to_n(100)           3
+    return tokens;
+}
 
-    sum_1_to_n:
-            push    0               ; .return, n, x             4
+static std::vector<Inst> parse(std::vector<std::string>& tokens) {
+    std::vector<Inst> insts;
 
-        .while_start
-            dup     1               ; .return, n, x, n          5
-            push    0               ; .return, n, x, n, 0       6
-            ge                      ; .return, n, x, n>=0       7
-            jz      .while_end      ; .return, n, x             8
+    const usize n = tokens.size();
+    for (usize i = 0; i < n; ++i) {
+        if (tokens[i] == std::string_view("halt")) {
+            insts.push_back(inst_halt());
+            continue;
+        }
+        if (tokens[i] == std::string_view("ret")) {
+            insts.push_back(inst_ret());
+            continue;
+        }
+        if (tokens[i] == std::string_view("ge")) {
+            insts.push_back(inst_ge());
+            continue;
+        }
+        if (tokens[i] == std::string_view("add")) {
+            insts.push_back(inst_add());
+            continue;
+        }
+        if (tokens[i][tokens[i].size() - 1] == ':') {
+            insts.push_back(inst_label(tokens[i].c_str()));
+            continue;
+        }
 
-            dup     1               ; .return, n, x, n          9
-            add                     ; .return, n, x+n          10
-            swap    1               ; .return, x+n, n          11
-            push    -1              ; .return, x+n, n, -1      12
-            add                     ; .return, x+n, n-1        13
-            swap    1               ; .return, n-1, x+n        14
+        usize j = i + 1;
+        assert(j < n);
 
-            jump    .while_start                               15
-        .while_end
+        if (tokens[i] == std::string_view("jump")) {
+            insts.push_back(inst_jump(tokens[j].c_str()));
+            i = j;
+            continue;
+        }
+        if (tokens[i] == std::string_view("jz")) {
+            insts.push_back(inst_jz(tokens[j].c_str()));
+            i = j;
+            continue;
+        }
+        if (tokens[i] == std::string_view("dup")) {
+            insts.push_back(inst_dup(stoull(tokens[j])));
+            i = j;
+            continue;
+        }
+        if (tokens[i] == std::string_view("swap")) {
+            insts.push_back(inst_swap(stoull(tokens[j])));
+            i = j;
+            continue;
+        }
+        if (tokens[i] == std::string_view("drop")) {
+            insts.push_back(inst_drop(stoull(tokens[j])));
+            i = j;
+            continue;
+        }
+        if (tokens[i] == std::string_view("push")) {
+            try {
+                insts.push_back(inst_push_integer(stoll(tokens[j])));
+                i = j;
+                continue;
+            } catch (const std::invalid_argument& _) {
+                insts.push_back(inst_push_label(tokens[j].c_str()));
+                i = j;
+                continue;
+            }
+            assert(0);
+        }
 
-            swap    1               ; .return, x+n, n-1        16
-            drop    1               ; .return, x+n             17
-            swap    1               ; x+n, .return             18
-            ret                                                19
-*/
+        assert(0);
+    }
 
-int main() {
-    Inst insts[] = {
-        inst_push_label(".return"),
-        inst_push_integer(100),
-        inst_jump("sum_1_to_n"),
-        inst_label(".return"),
-        inst_halt(),
-        inst_label("sum_1_to_n"),
-        inst_push_integer(0),
-        inst_label(".while_start"),
-        inst_dup(1),
-        inst_push_integer(0),
-        inst_ge(),
-        inst_jz(".while_end"),
-        inst_dup(1),
-        inst_add(),
-        inst_swap(1),
-        inst_push_integer(-1),
-        inst_add(),
-        inst_swap(1),
-        inst_jump(".while_start"),
-        inst_label(".while_end"),
-        inst_swap(1),
-        inst_drop(1),
-        inst_swap(1),
-        inst_ret(),
-    };
-    std::vector<InstOp> stack;
+    return insts;
+}
 
-    resolve_labels(insts, sizeof(insts) / sizeof(Inst));
-    interpret(insts, stack);
+int main(int argc, const char** argv) {
+    assert(1 < argc);
 
-    std::cout << stack << std::endl;
+    const std::string        source = string_from_path(argv[1]);
+    std::vector<std::string> tokens = tokenize(source);
+    std::vector<Inst>        insts = parse(tokens);
+    resolve_labels(insts);
+    std::vector<InstOp> stack = interpret(insts);
+
+    std::cout << insts << std::endl << stack << std::endl;
     return 0;
 }

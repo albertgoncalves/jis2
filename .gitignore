@@ -3,9 +3,15 @@
 !.clang-format
 !Makefile
 
+!vim/
+!*.vim
+
 !scripts/
 !*.sh
 
 !src/
 !*.cpp
 !*.hpp
+
+!ex/
+!*.j2

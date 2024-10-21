@@ -32,7 +32,7 @@ clean:
 
 .PHONY: run
 run: all
-	./scripts/run.sh
+	./scripts/run.sh ex/sum_1_to_n.j2
 
 bin/main: src/main.cpp
 	mkdir -p bin/

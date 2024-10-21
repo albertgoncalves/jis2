@@ -2,7 +2,7 @@
 
 set -u
 
-ASAN_OPTIONS=abort_on_error=1:disable_coredump=0:unmap_shadow_on_exit=1 ./bin/main &
+ASAN_OPTIONS=abort_on_error=1:disable_coredump=0:unmap_shadow_on_exit=1 ./bin/main "$@" &
 pid=$!
 
 function action {
