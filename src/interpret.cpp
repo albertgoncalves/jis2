@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <unordered_map>
-#include <vector>
 
 template <typename T>
 static T pop(std::vector<T>& vec) {

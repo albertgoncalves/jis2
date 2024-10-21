@@ -3,6 +3,8 @@
 
 #include "inst.hpp"
 
+#include <vector>
+
 namespace interpret {
 
 void resolve_labels(std::vector<inst::Inst>&);

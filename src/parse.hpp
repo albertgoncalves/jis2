@@ -3,6 +3,8 @@
 
 #include "inst.hpp"
 
+#include <vector>
+
 namespace parse {
 
 std::vector<std::string> tokenize(const std::string_view&);

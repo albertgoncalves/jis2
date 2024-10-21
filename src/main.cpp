@@ -4,7 +4,6 @@
 
 #include <cassert>
 #include <fstream>
-#include <iostream>
 
 template <typename T>
 static std::ostream& operator<<(std::ostream& stream, std::vector<T>& vec) {
