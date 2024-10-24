@@ -44,11 +44,11 @@ std::ostream& operator<<(std::ostream& stream, Inst& inst) {
         break;
     }
     case PUSH_INT: {
-        stream << "push " << inst.op.as_i64;
+        stream << "push-int " << inst.op.as_i64;
         break;
     }
     case PUSH_LABEL: {
-        stream << "push " << inst.op.as_usize;
+        stream << "push-label " << inst.op.as_usize;
         break;
     }
     case GE: {
@@ -57,6 +57,14 @@ std::ostream& operator<<(std::ostream& stream, Inst& inst) {
     }
     case ADD: {
         stream << "add";
+        break;
+    }
+    case GUARD0: {
+        stream << "guard-false " << inst.op.as_usize;
+        break;
+    }
+    case GUARD1: {
+        stream << "guard-true " << inst.op.as_usize;
         break;
     }
     default: {

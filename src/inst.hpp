@@ -27,6 +27,9 @@ enum Type {
     GE,
 
     ADD,
+
+    GUARD0,
+    GUARD1,
 };
 
 union Op {
