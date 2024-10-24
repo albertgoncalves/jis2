@@ -144,8 +144,7 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
 
     std::vector<inst::Inst> trace;
 
-    usize pc = 0;
-    for (;;) {
+    for (usize pc = 0;;) {
         if (can_trace && (!tracing) && (10 < jump_targets[pc])) {
             can_trace = false;
             tracing = true;

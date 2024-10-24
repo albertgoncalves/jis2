@@ -40,6 +40,6 @@ int main(int argc, const char** argv) {
     interpret::resolve_labels(insts);
     std::vector<inst::Op> stack = interpret::interpret(insts);
 
-    std::cout << insts << std::endl << stack << std::endl;
+    std::cout << '\n' << insts << '\n' << stack << std::endl;
     return 0;
 }
