@@ -36,10 +36,6 @@ clean:
 	rm -rf bin/
 	rm -rf build/
 
-.PHONY: run
-run: all
-	./scripts/run.sh ex/sum_1_to_n.j2
-
 bin/main: $(OBJECTS) src/prelude.hpp src/main.cpp
 	mkdir -p bin/
 	clang-format -i src/prelude.hpp src/main.cpp

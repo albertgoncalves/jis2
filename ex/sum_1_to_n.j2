@@ -7,32 +7,32 @@
 ;     return x;
 ; }
 
-            push    .return         ; .return
-            push    100             ; .return, 100
-            jump    sum_1_to_n      ; .return, 100
-        .return:
-            halt                    ; sum_1_to_n(100)
+            push    .return         ; .return                       0
+            push    100             ; .return, 100                  1
+            jump    sum_1_to_n      ; .return, 100                  2
+        .return:                    ;                               3
+            halt                    ; sum_1_to_n(100)               4
 
-    sum_1_to_n:
-            push    0               ; .return, n, x
+    sum_1_to_n:                     ;                               5
+            push    0               ; .return, n, x                 6
 
-        .while_start:
-            dup     1               ; .return, n, x, n
-            push    0               ; .return, n, x, n, 0
-            ge                      ; .return, n, x, n>=0
-            jz      .while_end      ; .return, n, x
+        .while_start:               ;                               7
+            dup     1               ; .return, n, x, n              8
+            push    0               ; .return, n, x, n, 0           9
+            ge                      ; .return, n, x, n>=0          10
+            jz      .while_end      ; .return, n, x                11
 
-            dup     1               ; .return, n, x, n
-            add                     ; .return, n, x+n
-            swap    1               ; .return, x+n, n
-            push    -1              ; .return, x+n, n, -1
-            add                     ; .return, x+n, n-1
-            swap    1               ; .return, n-1, x+n
+            dup     1               ; .return, n, x, n             12
+            add                     ; .return, n, x+n              13
+            swap    1               ; .return, x+n, n              14
+            push    -1              ; .return, x+n, n, -1          15
+            add                     ; .return, x+n, n-1            16
+            swap    1               ; .return, n-1, x+n            17
 
-            jump    .while_start
-        .while_end:
+            jump    .while_start    ;                              18
+        .while_end:                 ;                              19
 
-            swap    1               ; .return, x+n, n-1
-            drop    1               ; .return, x+n
-            swap    1               ; x+n, .return
-            ret
+            swap    1               ; .return, x+n, n-1            20
+            drop    1               ; .return, x+n                 21
+            swap    1               ; x+n, .return                 22
+            ret                     ;                              23
