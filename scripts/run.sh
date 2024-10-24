@@ -17,5 +17,5 @@ exit_code=$?
 trap - EXIT
 
 if [ "$exit_code" -ne 0 ]; then
-    coredumpctl debug -A '-q --readnow -ex "thread apply all backtrace full" -ex q' "$pid"
+    coredumpctl debug -A '-q --readnow -ex "thread apply all backtrace" -ex q' "$pid"
 fi
