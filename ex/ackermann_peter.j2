@@ -1,0 +1,55 @@
+; def ackermann_peter(m, n):
+;     if m == 0:
+;         return n + 1
+;     elif n == 0:
+;         return ackermann_peter(m - 1, 1)
+;     else:
+;         return ackermann_peter(m - 1, ackermann_peter(m, n - 1))
+
+            push    .return
+            push    3
+            push    6
+            jump    ackermann_peter
+        .return:
+            halt
+
+    ackermann_peter:                    ; [.return, m, n]
+            dup     1                   ; [.return, m, n, m]
+            push    0                   ; [.return, m, n, m, 0]
+            eq                          ; [.return, m, n, m==0]
+            jz      .else_0             ; [.return, m, n]
+
+            swap    1                   ; [.return, n, m]
+            drop    1                   ; [.return, n]
+            push    1                   ; [.return, n, 1]
+            add                         ; [.return, n+1]
+            swap    1                   ; [n+1, .return]
+            ret
+
+        .else_0:
+            dup     0                   ; [.return, m, n, n]
+            push    0                   ; [.return, m, n, n, 0]
+            eq                          ; [.return, m, n, n==0]
+            jz      .else_1             ; [.return, m, n]
+
+            drop    1                   ; [.return, m]
+            push    -1                  ; [.return, m, -1]
+            add                         ; [.return, m-1]
+            push    1                   ; [.return, m-1, 1]
+            jump    ackermann_peter
+
+        .else_1:
+            push    .return_1           ; [.return, m, n, .return_1]
+            swap    1                   ; [.return, m, .return_1, n]
+            dup     2                   ; [.return, m, .return_1, n, m]
+            swap    1                   ; [.return, m, .return_1, m, n]
+            push    -1                  ; [.return, m, .return_1, m, n, -1]
+            add                         ; [.return, m, .return_1, m, n-1]
+            jump    ackermann_peter
+
+        .return_1:                      ; [.return, m, ackermann_peter(m, n-1)]
+            swap    1                   ; [.return, ackermann_peter(m, n-1), m]
+            push    -1                  ; [.return, ackermann_peter(m, n-1), m, -1]
+            add                         ; [.return, ackermann_peter(m, n-1), m-1]
+            swap    1                   ; [.return, m-1, ackermann_peter(m, n-1)]
+            jump    ackermann_peter
