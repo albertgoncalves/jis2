@@ -6,12 +6,12 @@
 ;     return fib(n - 1, b, a + b)
 
             push    .return         ; .return
-            push    25              ; .return, 25
-            push    0               ; .return, 25, 0
-            push    1               ; .return, 25, 0, 1
+            push    30              ; .return, 30
+            push    0               ; .return, 30, 0
+            push    1               ; .return, 30, 0, 1
             jump    fib             ;
         .return:                    ;
-            halt                    ; fib(25)
+            halt                    ; fib(30)
 
     fib:                            ;
             dup     2               ; .return, n, a, b, n
