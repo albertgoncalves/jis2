@@ -6,36 +6,35 @@
 ;     return n
 
             push    .return         ; .return                                   0
-            push    10              ; .return, 10                               1
-            jump    fib             ; .return, 10                               2
+            push    25              ; .return, 25                               1
+            jump    fib             ;                                           2
         .return:                    ;                                           3
-            halt                    ; fib(10)                                   4
+            halt                    ; fib(25)                                   4
 
     fib:                            ;                                           5
             dup     0               ; .return, n, n                             6
             push    2               ; .return, n, n, 2                          7
             ge                      ; .return, n, n>=2                          8
             jz      .if_false       ; .return, n                                9
-        .if_true:                   ;                                           10
 
-            push    .return_a       ; .return, n, .return_a                     11
-            dup     1               ; .return, n, .return_a, n                  12
-            push    -2              ; .return, n, .return_a, n, -2              13
-            add                     ; .return, n, .return_a, n-2                14
-            jump    fib             ; .return, n, fib(n-2)                      15
-        .return_a:                  ;                                           16
-            push    .return_b       ; .return, n, fib(n-2), .return_b           17
-            dup     2               ; .return, n, fib(n-2), .return_b, n        18
-            push    -1              ; .return, n, fib(n-2), .return_b, n, -1    19
-            add                     ; .return, n, fib(n-2), .return_b, n-1      20
-            jump    fib             ; .return, n, fib(n-2), fib(n-1)            21
-        .return_b:                  ;                                           22
-            add                     ; .return, n, fib(n-2)+fib(n-1)             23
-            swap    2               ; fib(n-2)+fib(n-1), n, .return             24
-            swap    1               ; fib(n-2)+fib(n-1), .return, n             25
-            drop    1               ; fib(n-2)+fib(n-1), .return                26
-            ret                     ;                                           27
+            push    .return_a       ; .return, n, .return_a                     10
+            dup     1               ; .return, n, .return_a, n                  11
+            push    -2              ; .return, n, .return_a, n, -2              12
+            add                     ; .return, n, .return_a, n-2                13
+            jump    fib             ;                                           14
+        .return_a:                  ;                                           15
+            push    .return_b       ; .return, n, fib(n-2), .return_b           16
+            dup     2               ; .return, n, fib(n-2), .return_b, n        17
+            push    -1              ; .return, n, fib(n-2), .return_b, n, -1    18
+            add                     ; .return, n, fib(n-2), .return_b, n-1      19
+            jump    fib             ;                                           20
+        .return_b:                  ;                                           21
+            add                     ; .return, n, fib(n-2)+fib(n-1)             22
+            swap    2               ; fib(n-2)+fib(n-1), n, .return             23
+            swap    1               ; fib(n-2)+fib(n-1), .return, n             24
+            drop    1               ; fib(n-2)+fib(n-1), .return                25
+            ret                     ;                                           26
 
-        .if_false:                  ;                                           28
-            swap    1               ; n, .return                                29
-            ret                     ;                                           30
+        .if_false:                  ;                                           27
+            swap    1               ; n, .return                                28
+            ret                     ;                                           29

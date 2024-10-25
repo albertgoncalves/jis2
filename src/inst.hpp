@@ -24,12 +24,14 @@ enum Type {
     PUSH_INT,
     PUSH_LABEL,
 
+    EQ,
     GE,
 
     ADD,
 
-    GUARD0,
-    GUARD1,
+    GUARD_0,
+    GUARD_1,
+    GUARD_RET,
 };
 
 union Op {
@@ -47,8 +49,8 @@ struct Inst {
     Op   op;
 };
 
-std::ostream& operator<<(std::ostream&, Op&);
-std::ostream& operator<<(std::ostream&, Inst&);
+std::ostream& operator<<(std::ostream&, const Op&);
+std::ostream& operator<<(std::ostream&, const Inst&);
 
 Inst halt();
 Inst label(const char*);
@@ -60,6 +62,7 @@ Inst swap(usize);
 Inst drop(usize);
 Inst push_integer(i64);
 Inst push_label(const char*);
+Inst eq();
 Inst ge();
 Inst add();
 

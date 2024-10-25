@@ -40,6 +40,10 @@ std::vector<inst::Inst> parse(std::vector<std::string>& tokens) {
             insts.push_back(inst::ret());
             continue;
         }
+        if (tokens[i] == std::string_view("eq")) {
+            insts.push_back(inst::eq());
+            continue;
+        }
         if (tokens[i] == std::string_view("ge")) {
             insts.push_back(inst::ge());
             continue;

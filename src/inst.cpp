@@ -4,12 +4,12 @@
 
 namespace inst {
 
-std::ostream& operator<<(std::ostream& stream, Op& op) {
+std::ostream& operator<<(std::ostream& stream, const Op& op) {
     stream << op.as_i64;
     return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, Inst& inst) {
+std::ostream& operator<<(std::ostream& stream, const Inst& inst) {
     switch (inst.type) {
     case HALT: {
         stream << "halt";
@@ -51,6 +51,10 @@ std::ostream& operator<<(std::ostream& stream, Inst& inst) {
         stream << "push-label " << inst.op.as_usize;
         break;
     }
+    case EQ: {
+        stream << "eq";
+        break;
+    }
     case GE: {
         stream << "ge";
         break;
@@ -59,12 +63,16 @@ std::ostream& operator<<(std::ostream& stream, Inst& inst) {
         stream << "add";
         break;
     }
-    case GUARD0: {
+    case GUARD_0: {
         stream << "guard-false " << inst.op.as_usize;
         break;
     }
-    case GUARD1: {
+    case GUARD_1: {
         stream << "guard-true " << inst.op.as_usize;
+        break;
+    }
+    case GUARD_RET: {
+        stream << "guard-ret " << inst.op.as_usize;
         break;
     }
     default: {
@@ -112,6 +120,10 @@ Inst push_integer(i64 integer) {
 
 Inst push_label(const char* label) {
     return (Inst){.type = PUSH_LABEL, .op = {.as_string = label}};
+}
+
+Inst eq() {
+    return (Inst){.type = EQ, .op = {}};
 }
 
 Inst ge() {

@@ -46,13 +46,15 @@ void resolve_labels(std::vector<inst::Inst>& insts) {
         case inst::SWAP:
         case inst::DROP:
         case inst::PUSH_INT:
+        case inst::EQ:
         case inst::GE:
         case inst::ADD: {
             break;
         }
 
-        case inst::GUARD0:
-        case inst::GUARD1:
+        case inst::GUARD_0:
+        case inst::GUARD_1:
+        case inst::GUARD_RET:
         default: {
             assert(0);
         }
@@ -65,7 +67,8 @@ static usize run_trace(const std::vector<inst::Inst>& trace, std::vector<inst::O
     for (usize pc = 0;; pc = (pc + 1) % m) {
         const inst::Inst inst = trace[pc];
         switch (inst.type) {
-        case inst::PUSH_INT: {
+        case inst::PUSH_INT:
+        case inst::PUSH_LABEL: {
             stack.push_back(inst.op);
             break;
         }
@@ -94,6 +97,13 @@ static usize run_trace(const std::vector<inst::Inst>& trace, std::vector<inst::O
             stack.resize(n - inst.op.as_usize);
             break;
         }
+        case inst::EQ: {
+            const usize n = stack.size();
+            assert(2 <= n);
+            stack[n - 2].as_bool = stack[n - 2].as_i64 == stack[n - 1].as_i64;
+            stack.resize(n - 1);
+            break;
+        }
         case inst::GE: {
             const usize n = stack.size();
             assert(2 <= n);
@@ -108,15 +118,22 @@ static usize run_trace(const std::vector<inst::Inst>& trace, std::vector<inst::O
             stack.resize(n - 1);
             break;
         }
-        case inst::GUARD0: {
+        case inst::GUARD_0: {
             if (!pop(stack).as_bool) {
                 return inst.op.as_usize;
             }
             break;
         }
-        case inst::GUARD1: {
+        case inst::GUARD_1: {
             if (pop(stack).as_bool) {
                 return inst.op.as_usize;
+            }
+            break;
+        }
+        case inst::GUARD_RET: {
+            const usize ret_pc = pop(stack).as_usize;
+            if (inst.op.as_usize != ret_pc) {
+                return ret_pc;
             }
             break;
         }
@@ -125,40 +142,55 @@ static usize run_trace(const std::vector<inst::Inst>& trace, std::vector<inst::O
         case inst::JUMP:
         case inst::JZ:
         case inst::RET:
-        case inst::PUSH_LABEL:
         default: {
+            std::cerr << inst << std::endl;
             assert(0);
         }
         }
     }
 }
 
-std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
+#define MAX_TRACE_SIZE   100
+#define TARGET_THRESHOLD 5
+
+std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts, bool can_trace) {
     std::vector<inst::Op> stack;
 
-    std::unordered_map<usize, usize> jump_targets;
+    std::unordered_map<usize, usize>                   jump_targets;
+    std::unordered_map<usize, std::vector<inst::Inst>> traces;
 
-    bool  can_trace = true;
-    bool  tracing = false;
-    usize trace_start = insts.size();
-
-    std::vector<inst::Inst> trace;
+    bool                     tracing = false;
+    usize                    trace_start = insts.size();
+    std::vector<inst::Inst>* current_trace = nullptr;
 
     for (usize pc = 0;;) {
-        if (can_trace && (!tracing) && (10 < jump_targets[pc])) {
-            can_trace = false;
+        if (MAX_TRACE_SIZE <= traces[pc].size()) {
+            current_trace->clear();
+            current_trace = nullptr;
+            tracing = false;
+        } else if (can_trace && (!tracing) && (TARGET_THRESHOLD <= jump_targets[pc]) &&
+                   (traces[pc].size() == 0))
+        {
             tracing = true;
             trace_start = pc;
-        } else if (tracing && (pc == trace_start)) {
-            tracing = false;
-
+            current_trace = &traces[trace_start];
+            current_trace->clear();
+        } else if (tracing && (trace_start == pc)) {
             std::cout << trace_start << ": [\n";
-            for (usize i = 0; i < trace.size(); ++i) {
-                std::cout << "    " << trace[i] << '\n';
+            for (usize i = 0; i < current_trace->size(); ++i) {
+                std::cout << "    " << (*current_trace)[i] << '\n';
             }
             std::cout << "]\n\n";
 
-            pc = run_trace(trace, stack);
+            current_trace = nullptr;
+            tracing = false;
+            trace_start = insts.size();
+        }
+
+        if ((!tracing) && (traces[pc].size() != 0)) {
+            pc = run_trace(traces[pc], stack);
+            ++jump_targets[pc];
+            continue;
         }
 
         const inst::Inst inst = insts[pc];
@@ -178,7 +210,7 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
         case inst::PUSH_INT:
         case inst::PUSH_LABEL: {
             if (tracing) {
-                trace.push_back(inst);
+                current_trace->push_back(inst);
             }
             stack.push_back(inst.op);
             ++pc;
@@ -195,33 +227,39 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
         }
         case inst::JZ: {
             const bool condition = pop(stack).as_bool;
-            if (condition == false) {
-                pc = inst.op.as_usize;
-                ++jump_targets[pc];
-
-                if (tracing) {
-                    trace.push_back({.type = inst::GUARD0, .op = {.as_usize = pc}});
-                }
-            } else {
+            if (condition) {
+                const usize branch_pc = inst.op.as_usize;
                 ++pc;
 
                 if (tracing) {
-                    trace.push_back({.type = inst::GUARD1, .op = {.as_usize = pc}});
+                    current_trace->push_back({
+                        .type = inst::GUARD_0,
+                        .op = {.as_usize = branch_pc},
+                    });
+                }
+            } else {
+                const usize branch_pc = pc + 1;
+                pc = inst.op.as_usize;
+
+                if (tracing) {
+                    current_trace->push_back({
+                        .type = inst::GUARD_1,
+                        .op = {.as_usize = branch_pc},
+                    });
                 }
             }
             break;
         }
         case inst::RET: {
-            if (tracing) {
-                trace.push_back({.type = inst::DROP, .op = {.as_usize = 1}});
-            }
             pc = pop(stack).as_usize;
-            ++jump_targets[pc];
+            if (tracing) {
+                current_trace->push_back({.type = inst::GUARD_RET, .op = {.as_usize = pc}});
+            }
             break;
         }
         case inst::DUP: {
             if (tracing) {
-                trace.push_back(inst);
+                current_trace->push_back(inst);
             }
             stack.push_back(stack[stack.size() - (inst.op.as_usize + 1)]);
             ++pc;
@@ -229,7 +267,7 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
         }
         case inst::SWAP: {
             if (tracing) {
-                trace.push_back(inst);
+                current_trace->push_back(inst);
             }
             const usize n = stack.size();
 
@@ -249,7 +287,7 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
         }
         case inst::DROP: {
             if (tracing) {
-                trace.push_back(inst);
+                current_trace->push_back(inst);
             }
             const usize n = stack.size();
             assert(inst.op.as_usize <= n);
@@ -258,9 +296,21 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
             ++pc;
             break;
         }
+        case inst::EQ: {
+            if (tracing) {
+                current_trace->push_back(inst);
+            }
+            const usize n = stack.size();
+            assert(2 <= n);
+            stack[n - 2].as_bool = stack[n - 2].as_i64 == stack[n - 1].as_i64;
+            stack.resize(n - 1);
+
+            ++pc;
+            break;
+        }
         case inst::GE: {
             if (tracing) {
-                trace.push_back(inst);
+                current_trace->push_back(inst);
             }
             const usize n = stack.size();
             assert(2 <= n);
@@ -272,7 +322,7 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
         }
         case inst::ADD: {
             if (tracing) {
-                trace.push_back(inst);
+                current_trace->push_back(inst);
             }
             const usize n = stack.size();
             assert(2 <= n);
@@ -282,8 +332,9 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts) {
             ++pc;
             break;
         }
-        case inst::GUARD0:
-        case inst::GUARD1:
+        case inst::GUARD_0:
+        case inst::GUARD_1:
+        case inst::GUARD_RET:
         default: {
             assert(0);
         }

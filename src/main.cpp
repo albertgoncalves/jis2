@@ -6,7 +6,7 @@
 #include <fstream>
 
 template <typename T>
-static std::ostream& operator<<(std::ostream& stream, std::vector<T>& vec) {
+static std::ostream& operator<<(std::ostream& stream, const std::vector<T>& vec) {
     const usize n = vec.size();
     if (n == 0) {
         stream << "[]";
@@ -22,7 +22,7 @@ static std::ostream& operator<<(std::ostream& stream, std::vector<T>& vec) {
 }
 
 int main(int argc, const char** argv) {
-    assert(1 < argc);
+    assert(2 < argc);
 
     std::ifstream file(argv[1]);
     assert(file);
@@ -33,7 +33,17 @@ int main(int argc, const char** argv) {
     std::vector<inst::Inst>  insts = parse::parse(tokens);
 
     interpret::resolve_labels(insts);
-    std::vector<inst::Op> stack = interpret::interpret(insts);
+
+    bool can_trace;
+    if (argv[2][0] == 'f') {
+        can_trace = false;
+    } else if (argv[2][0] == 't') {
+        can_trace = true;
+    } else {
+        assert(0);
+    }
+
+    std::vector<inst::Op> stack = interpret::interpret(insts, can_trace);
 
     std::cout << '\n' << stack << std::endl;
     return 0;

@@ -8,10 +8,10 @@
 ; }
 
             push    .return         ; .return                       0
-            push    100             ; .return, 100                  1
-            jump    sum_1_to_n      ; .return, 100                  2
+            push    1000            ; .return, 1000                 1
+            jump    sum_1_to_n      ;                               2
         .return:                    ;                               3
-            halt                    ; sum_1_to_n(100)               4
+            halt                    ; sum_1_to_n(1000)              4
 
     sum_1_to_n:                     ;                               5
             push    0               ; .return, n, x                 6

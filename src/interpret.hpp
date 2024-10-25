@@ -9,7 +9,7 @@ namespace interpret {
 
 void resolve_labels(std::vector<inst::Inst>&);
 
-std::vector<inst::Op> interpret(const std::vector<inst::Inst>&);
+std::vector<inst::Op> interpret(const std::vector<inst::Inst>&, bool);
 
 } // namespace interpret
 
