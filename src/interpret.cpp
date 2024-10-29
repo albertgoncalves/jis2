@@ -3,16 +3,55 @@
 #include <cassert>
 #include <unordered_map>
 
-template <typename T>
-static T pop(std::vector<T>& vec) {
-    const usize n = vec.size();
-    assert(n != 0);
-    const T t = vec[n - 1];
-    vec.resize(n - 1);
-    return t;
-}
+#include <sys/mman.h>
+#include <unistd.h>
 
 namespace interpret {
+
+template <typename T>
+static T pop(T** ts) {
+    return *(--(*ts));
+}
+
+template <typename T>
+static void push(T** ts, T t) {
+    *((*ts)++) = t;
+}
+
+#define COUNT_PAGES 32
+
+static inst::Op* new_stack() {
+    const int pagesize = getpagesize();
+
+    void* pages = mmap(NULL,
+                       static_cast<usize>(pagesize * COUNT_PAGES),
+                       PROT_READ | PROT_WRITE,
+                       MAP_ANONYMOUS | MAP_PRIVATE,
+                       -1,
+                       0);
+    assert(pages != MAP_FAILED);
+
+    // NOTE: Let's make it so we can't read or write to the first and last pages.
+    void* first_page = mmap(pages,
+                            static_cast<usize>(pagesize),
+                            PROT_NONE,
+                            MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED,
+                            -1,
+                            0);
+    assert(first_page != MAP_FAILED);
+
+    void* last_page = mmap(&reinterpret_cast<u8*>(pages)[pagesize * (COUNT_PAGES - 1)],
+                           static_cast<usize>(pagesize),
+                           PROT_NONE,
+                           MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED,
+                           -1,
+                           0);
+    assert(last_page != MAP_FAILED);
+
+    return reinterpret_cast<inst::Op*>(&reinterpret_cast<u8*>(pages)[pagesize]);
+}
+
+typedef usize (*JitFunc)(inst::Op*);
 
 void resolve_labels(std::vector<inst::Inst>& insts) {
     std::unordered_map<std::string_view, usize> labels;
@@ -62,60 +101,47 @@ void resolve_labels(std::vector<inst::Inst>& insts) {
     }
 }
 
-static usize run_trace(const std::vector<inst::Inst>& trace, std::vector<inst::Op>& stack) {
+static usize run_trace(const std::vector<inst::Inst>& trace, inst::Op** stack) {
     const usize m = trace.size();
     for (usize pc = 0;; pc = (pc + 1) % m) {
         const inst::Inst inst = trace[pc];
         switch (inst.type) {
         case inst::PUSH_INT:
         case inst::PUSH_LABEL: {
-            stack.push_back(inst.op);
+            push(stack, inst.op);
+
             break;
         }
         case inst::DUP: {
-            stack.push_back(stack[stack.size() - (inst.op.as_usize + 1)]);
+            push(stack, *((*stack) - (inst.op.as_usize + 1)));
+
             break;
         }
         case inst::SWAP: {
-            const usize n = stack.size();
+            const inst::Op a = *((*stack) - 1);
+            const inst::Op b = *((*stack) - (inst.op.as_usize + 1));
 
-            const usize i = n - 1;
-            const usize j = n - (inst.op.as_usize + 1);
-
-            assert(i != j);
-
-            const inst::Op a = stack[i];
-            const inst::Op b = stack[j];
-
-            stack[i] = b;
-            stack[j] = a;
+            *((*stack) - 1) = b;
+            *((*stack) - (inst.op.as_usize + 1)) = a;
             break;
         }
         case inst::DROP: {
-            const usize n = stack.size();
-            assert(inst.op.as_usize <= n);
-            stack.resize(n - inst.op.as_usize);
+            *stack -= inst.op.as_usize;
             break;
         }
         case inst::EQ: {
-            const usize n = stack.size();
-            assert(2 <= n);
-            stack[n - 2].as_bool = stack[n - 2].as_i64 == stack[n - 1].as_i64;
-            stack.resize(n - 1);
+            const inst::Op op = pop(stack);
+            (*((*stack) - 1)).as_bool = (*((*stack) - 1)).as_i64 == op.as_i64;
             break;
         }
         case inst::GE: {
-            const usize n = stack.size();
-            assert(2 <= n);
-            stack[n - 2].as_bool = stack[n - 2].as_i64 >= stack[n - 1].as_i64;
-            stack.resize(n - 1);
+            const inst::Op op = pop(stack);
+            (*((*stack) - 1)).as_bool = (*((*stack) - 1)).as_i64 >= op.as_i64;
             break;
         }
         case inst::ADD: {
-            const usize n = stack.size();
-            assert(2 <= n);
-            stack[n - 2].as_i64 += stack[n - 1].as_i64;
-            stack.resize(n - 1);
+            const inst::Op op = pop(stack);
+            (*((*stack) - 1)).as_i64 += op.as_i64;
             break;
         }
         case inst::GUARD_0: {
@@ -153,8 +179,8 @@ static usize run_trace(const std::vector<inst::Inst>& trace, std::vector<inst::O
 #define MAX_TRACE_SIZE   100
 #define TARGET_THRESHOLD 5
 
-std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts, bool can_trace) {
-    std::vector<inst::Op> stack;
+inst::Op* interpret(const std::vector<inst::Inst>& insts, bool can_trace) {
+    inst::Op* stack = new_stack();
 
     std::unordered_map<usize, usize>                   jump_targets;
     std::unordered_map<usize, std::vector<inst::Inst>> traces;
@@ -188,7 +214,7 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts, bool can_t
         }
 
         if ((!tracing) && (traces[pc].size() != 0)) {
-            pc = run_trace(traces[pc], stack);
+            pc = run_trace(traces[pc], &stack);
             ++jump_targets[pc];
             continue;
         }
@@ -209,11 +235,12 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts, bool can_t
         }
         case inst::PUSH_INT:
         case inst::PUSH_LABEL: {
+            push(&stack, inst.op);
+            ++pc;
+
             if (tracing) {
                 current_trace->push_back(inst);
             }
-            stack.push_back(inst.op);
-            ++pc;
             break;
         }
         case inst::LABEL: {
@@ -226,7 +253,7 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts, bool can_t
             break;
         }
         case inst::JZ: {
-            const bool condition = pop(stack).as_bool;
+            const bool condition = pop(&stack).as_bool;
             if (condition) {
                 const usize branch_pc = inst.op.as_usize;
                 ++pc;
@@ -251,85 +278,77 @@ std::vector<inst::Op> interpret(const std::vector<inst::Inst>& insts, bool can_t
             break;
         }
         case inst::RET: {
-            pc = pop(stack).as_usize;
+            pc = pop(&stack).as_usize;
+
             if (tracing) {
                 current_trace->push_back({.type = inst::GUARD_RET, .op = {.as_usize = pc}});
             }
             break;
         }
         case inst::DUP: {
+            push(&stack, *(stack - (inst.op.as_usize + 1)));
+            ++pc;
+
             if (tracing) {
                 current_trace->push_back(inst);
             }
-            stack.push_back(stack[stack.size() - (inst.op.as_usize + 1)]);
-            ++pc;
             break;
         }
         case inst::SWAP: {
+            const inst::Op a = *(stack - 1);
+            const inst::Op b = *(stack - (inst.op.as_usize + 1));
+
+            *(stack - 1) = b;
+            *(stack - (inst.op.as_usize + 1)) = a;
+
+            ++pc;
+
             if (tracing) {
                 current_trace->push_back(inst);
             }
-            const usize n = stack.size();
-
-            const usize i = n - 1;
-            const usize j = n - (inst.op.as_usize + 1);
-
-            assert(i != j);
-
-            const inst::Op a = stack[i];
-            const inst::Op b = stack[j];
-
-            stack[i] = b;
-            stack[j] = a;
-
-            ++pc;
             break;
         }
         case inst::DROP: {
+            stack -= inst.op.as_usize;
+
+            ++pc;
+
             if (tracing) {
                 current_trace->push_back(inst);
             }
-            const usize n = stack.size();
-            assert(inst.op.as_usize <= n);
-            stack.resize(n - inst.op.as_usize);
-
-            ++pc;
             break;
         }
         case inst::EQ: {
+            const inst::Op op = pop(&stack);
+            (*(stack - 1)).as_bool = (*(stack - 1)).as_i64 == op.as_i64;
+
+            ++pc;
+
             if (tracing) {
                 current_trace->push_back(inst);
             }
-            const usize n = stack.size();
-            assert(2 <= n);
-            stack[n - 2].as_bool = stack[n - 2].as_i64 == stack[n - 1].as_i64;
-            stack.resize(n - 1);
-
-            ++pc;
             break;
         }
         case inst::GE: {
+            const inst::Op op = pop(&stack);
+            (*(stack - 1)).as_bool = (*(stack - 1)).as_i64 >= op.as_i64;
+
+            ++pc;
+
             if (tracing) {
                 current_trace->push_back(inst);
             }
-            const usize n = stack.size();
-            assert(2 <= n);
-            stack[n - 2].as_bool = stack[n - 2].as_i64 >= stack[n - 1].as_i64;
-            stack.resize(n - 1);
-
-            ++pc;
             break;
         }
         case inst::ADD: {
+            const inst::Op op = pop(&stack);
+            (*(stack - 1)).as_i64 += op.as_i64;
+
+            ++pc;
+
             if (tracing) {
                 current_trace->push_back(inst);
             }
-            const usize n = stack.size();
-            assert(2 <= n);
-            stack[n - 2].as_i64 += stack[n - 1].as_i64;
-            stack.resize(n - 1);
-
-            ++pc;
             break;
         }
         case inst::GUARD_0:

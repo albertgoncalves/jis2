@@ -5,22 +5,6 @@
 #include <cassert>
 #include <fstream>
 
-template <typename T>
-static std::ostream& operator<<(std::ostream& stream, const std::vector<T>& vec) {
-    const usize n = vec.size();
-    if (n == 0) {
-        stream << "[]";
-        return stream;
-    }
-
-    stream << '[' << vec[0];
-    for (usize i = 1; i < n; ++i) {
-        stream << ", " << vec[i];
-    }
-    stream << ']';
-    return stream;
-}
-
 int main(int argc, const char** argv) {
     assert(2 < argc);
 
@@ -43,8 +27,9 @@ int main(int argc, const char** argv) {
         assert(0);
     }
 
-    std::vector<inst::Op> stack = interpret::interpret(insts, can_trace);
+    inst::Op* stack = interpret::interpret(insts, can_trace);
 
-    std::cout << '\n' << stack << std::endl;
+    std::cout << '\n' << *(stack - 1) << std::endl;
+
     return 0;
 }
