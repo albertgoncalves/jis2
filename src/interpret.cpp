@@ -10,15 +10,15 @@ namespace interpret {
 
 template <typename T>
 static T pop(T** ts) {
-    return *(--(*ts));
+    return *((*ts)++);
 }
 
 template <typename T>
 static void push(T** ts, T t) {
-    *((*ts)++) = t;
+    *(--(*ts)) = t;
 }
 
-#define COUNT_PAGES 32
+#define COUNT_PAGES 8
 
 static inst::Op* new_stack() {
     const int pagesize = getpagesize();
@@ -48,7 +48,7 @@ static inst::Op* new_stack() {
                            0);
     assert(last_page != MAP_FAILED);
 
-    return reinterpret_cast<inst::Op*>(&reinterpret_cast<u8*>(pages)[pagesize]);
+    return reinterpret_cast<inst::Op*>(&reinterpret_cast<u8*>(pages)[pagesize * (COUNT_PAGES - 1)]);
 }
 
 typedef usize (*JitFunc)(inst::Op*);
@@ -113,35 +113,35 @@ static usize run_trace(const std::vector<inst::Inst>& trace, inst::Op** stack) {
             break;
         }
         case inst::DUP: {
-            push(stack, *((*stack) - (inst.op.as_usize + 1)));
+            push(stack, *((*stack) + inst.op.as_usize));
 
             break;
         }
         case inst::SWAP: {
-            const inst::Op a = *((*stack) - 1);
-            const inst::Op b = *((*stack) - (inst.op.as_usize + 1));
+            const inst::Op a = **stack;
+            const inst::Op b = *((*stack) + inst.op.as_usize);
 
-            *((*stack) - 1) = b;
-            *((*stack) - (inst.op.as_usize + 1)) = a;
+            **stack = b;
+            *((*stack) + inst.op.as_usize) = a;
             break;
         }
         case inst::DROP: {
-            *stack -= inst.op.as_usize;
+            *stack += inst.op.as_usize;
             break;
         }
         case inst::EQ: {
             const inst::Op op = pop(stack);
-            (*((*stack) - 1)).as_bool = (*((*stack) - 1)).as_i64 == op.as_i64;
+            (**stack).as_bool = (**stack).as_i64 == op.as_i64;
             break;
         }
         case inst::GE: {
             const inst::Op op = pop(stack);
-            (*((*stack) - 1)).as_bool = (*((*stack) - 1)).as_i64 >= op.as_i64;
+            (**stack).as_bool = (**stack).as_i64 >= op.as_i64;
             break;
         }
         case inst::ADD: {
             const inst::Op op = pop(stack);
-            (*((*stack) - 1)).as_i64 += op.as_i64;
+            (**stack).as_i64 += op.as_i64;
             break;
         }
         case inst::GUARD_0: {
@@ -286,7 +286,7 @@ inst::Op* interpret(const std::vector<inst::Inst>& insts, bool can_trace) {
             break;
         }
         case inst::DUP: {
-            push(&stack, *(stack - (inst.op.as_usize + 1)));
+            push(&stack, *(stack + inst.op.as_usize));
             ++pc;
 
             if (tracing) {
@@ -295,11 +295,11 @@ inst::Op* interpret(const std::vector<inst::Inst>& insts, bool can_trace) {
             break;
         }
         case inst::SWAP: {
-            const inst::Op a = *(stack - 1);
-            const inst::Op b = *(stack - (inst.op.as_usize + 1));
+            const inst::Op a = *stack;
+            const inst::Op b = *(stack + inst.op.as_usize);
 
-            *(stack - 1) = b;
-            *(stack - (inst.op.as_usize + 1)) = a;
+            *stack = b;
+            *(stack + inst.op.as_usize) = a;
 
             ++pc;
 
@@ -309,7 +309,7 @@ inst::Op* interpret(const std::vector<inst::Inst>& insts, bool can_trace) {
             break;
         }
         case inst::DROP: {
-            stack -= inst.op.as_usize;
+            stack += inst.op.as_usize;
 
             ++pc;
 
@@ -320,7 +320,7 @@ inst::Op* interpret(const std::vector<inst::Inst>& insts, bool can_trace) {
         }
         case inst::EQ: {
             const inst::Op op = pop(&stack);
-            (*(stack - 1)).as_bool = (*(stack - 1)).as_i64 == op.as_i64;
+            (*stack).as_bool = (*stack).as_i64 == op.as_i64;
 
             ++pc;
 
@@ -331,7 +331,7 @@ inst::Op* interpret(const std::vector<inst::Inst>& insts, bool can_trace) {
         }
         case inst::GE: {
             const inst::Op op = pop(&stack);
-            (*(stack - 1)).as_bool = (*(stack - 1)).as_i64 >= op.as_i64;
+            (*stack).as_bool = (*stack).as_i64 >= op.as_i64;
 
             ++pc;
 
@@ -342,7 +342,7 @@ inst::Op* interpret(const std::vector<inst::Inst>& insts, bool can_trace) {
         }
         case inst::ADD: {
             const inst::Op op = pop(&stack);
-            (*(stack - 1)).as_i64 += op.as_i64;
+            (*stack).as_i64 += op.as_i64;
 
             ++pc;
 

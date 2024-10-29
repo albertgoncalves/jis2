@@ -29,7 +29,7 @@ int main(int argc, const char** argv) {
 
     inst::Op* stack = interpret::interpret(insts, can_trace);
 
-    std::cout << '\n' << *(stack - 1) << std::endl;
+    std::cout << '\n' << *stack << std::endl;
 
     return 0;
 }
